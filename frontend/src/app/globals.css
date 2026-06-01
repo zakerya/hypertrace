@@ -1,0 +1,25 @@
+/* 
+
+frontend/src/styles/globals.css 
+
+*/
+
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+/* Optional global styles */
+body {
+  background-color: #f9fafb; /* gray-50 */
+  color: #111827;            /* gray-900 */
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
