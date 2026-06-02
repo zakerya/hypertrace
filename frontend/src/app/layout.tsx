@@ -1,19 +1,18 @@
-/* frontend/src/app/layout.tsx */
-
 import "./globals.css";
 import { Metadata } from "next";
+import Providers from "./providers"; // <-- Added import for React Query
 
 export const metadata: Metadata = {
   title: {
     default: "HyperTrace - Real-Time Parcel Tracking & Notifications",
-    template: "%s | HyperTrace", // This allows child pages to set their own title like "Dashboard | HyperTrace"
+    template: "%s | HyperTrace",
   },
   description: "Bridge the gap between senders, couriers, and receivers. Real-time parcel tracking, instant notifications, and full delivery transparency.",
   keywords: ["parcel tracking", "real-time delivery", "courier portal", "shipment tracking", "HyperTrace", "logistics"],
   openGraph: {
     title: "HyperTrace - Real-Time Parcel Tracking",
     description: "End the black box of parcel delivery. Track shipments, update statuses, and notify receivers instantly.",
-    url: "https://hypertrace.app", // Placeholder
+    url: "https://hypertrace.app",
     siteName: "HyperTrace",
     locale: "en_US",
     type: "website",
@@ -46,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/admin" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Admin</a>
               </div>
               
-              {/* Mobile Menu Button (Placeholder for future enhancement) */}
+              {/* Mobile Menu Button */}
               <div className="md:hidden flex items-center">
                 <button className="text-gray-400 hover:text-white focus:outline-none" aria-label="Menu">
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,9 +59,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Main Content */}
         <main className="flex-grow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            {children}
-          </div>
+          <Providers> {/* <-- Wrapped children in React Query Provider */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+              {children}
+            </div>
+          </Providers>
         </main>
 
         {/* Footer */}
