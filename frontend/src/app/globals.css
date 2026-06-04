@@ -5,7 +5,7 @@
   --animate-fade-in-up: fade-in-up 0.8s ease-out forwards;
   --animate-fade-in: fade-in 0.6s ease-out forwards;
   --animate-glow: glow 3s ease-in-out infinite alternate;
-  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-dust: float-dust 15s linear infinite;
 }
 
 @keyframes fade-in-up {
@@ -24,15 +24,18 @@
   to { opacity: 1; }
 }
 
+/* Softened glow for a more professional SaaS look */
 @keyframes glow {
-  from { box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); }
-  to { box-shadow: 0 0 25px rgba(59, 130, 246, 0.6); }
+  from { box-shadow: 0 0 8px rgba(59, 130, 246, 0.15); }
+  to { box-shadow: 0 0 16px rgba(59, 130, 246, 0.3); }
 }
 
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+@keyframes float-dust {
+  0% { transform: translate(0, 0); opacity: 0.2; }
+  25% { transform: translate(100px, -150px); opacity: 0.6; }
+  50% { transform: translate(-50px, -300px); opacity: 0.8; }
+  75% { transform: translate(-150px, -150px); opacity: 0.4; }
+  100% { transform: translate(0, 0); opacity: 0.2; }
 }
 
 /* Global Styles & Resets */
@@ -95,4 +98,17 @@ a {
 * {
   scrollbar-width: thin;
   scrollbar-color: #374151 #111827; /* thumb track */
+}
+
+/* --- Custom Utility Classes --- */
+
+/* Subtle tech grid background (like Vercel/Stripe) */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  /* Fades the grid out towards the edges */
+  mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%);
 }
