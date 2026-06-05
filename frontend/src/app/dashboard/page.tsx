@@ -22,7 +22,7 @@ export default function Dashboard() {
   const { data: parcels, isLoading, isError } = useQuery<Parcel[]>({
     queryKey: ["parcels"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8080/api/v1/parcels");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/parcels`);
       if (!res.ok) throw new Error("Failed to fetch parcels");
       return res.json();
     },

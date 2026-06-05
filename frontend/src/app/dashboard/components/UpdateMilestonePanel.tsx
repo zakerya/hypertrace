@@ -17,7 +17,7 @@ export default function UpdateMilestonePanel({ trackingId, onTrackingIdChange }:
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`http://localhost:8080/api/v1/parcels/status?tracking_id=${trackingId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/parcels/status?tracking_id=${trackingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: activeStatus, location: location }),

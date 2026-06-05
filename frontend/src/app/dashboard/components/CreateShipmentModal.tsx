@@ -24,7 +24,7 @@ export default function CreateShipmentModal({ isOpen, onClose }: CreateShipmentM
 
     const createMutation = useMutation({
     mutationFn: async (newParcel: Omit<Parcel, "id" | "current_status" | "status_history">) => {
-      const res = await fetch("http://localhost:8080/api/v1/parcels", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/parcels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newParcel),
