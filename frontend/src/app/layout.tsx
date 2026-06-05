@@ -45,8 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/status" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Status</a>
                 <a href="/docs" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Docs</a>
                 <a href="/track" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Track</a>
-                <a href="/dashboard" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Sender</a>
-                <a href="/courier" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Courier</a>
+                <a href="/dashboard" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Dashboard</a>
                 <a href="/admin" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Admin</a>
               </div>
               
@@ -61,9 +60,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </nav>
 
         {/* Main Content */}
-        <main className="flex-grow">
+         <main className="flex-grow">
           <Providers>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            {/* Changed from max-w-7xl to max-w-[1920px] to utilize full screen width */}
+            <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
               {children}
             </div>
           </Providers>
