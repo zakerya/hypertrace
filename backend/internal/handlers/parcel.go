@@ -1,3 +1,5 @@
+// backend/internal/handlers/parcel.go
+
 package handlers
 
 import (
@@ -7,9 +9,22 @@ import (
 	"time"
 
 	"hypertrace/internal/models"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Mock data updated with Status History
+// ParcelHandler holds dependencies (like the DB pool) for parcel-related handlers
+type ParcelHandler struct {
+	pool *pgxpool.Pool
+}
+
+// NewParcelHandler is the constructor that main.go is calling
+func NewParcelHandler(pool *pgxpool.Pool) *ParcelHandler {
+	return &ParcelHandler{pool: pool}
+}
+
+// Mock data (will be replaced by DB queries later)
 var parcels = []models.Parcel{
 	{
 		ID:                "HTC-89012",
@@ -46,13 +61,15 @@ var parcels = []models.Parcel{
 	},
 }
 
-func GetAllParcels(w http.ResponseWriter, r *http.Request) {
+// Now every function becomes a method on *ParcelHandler
+
+func (h *ParcelHandler) GetAllParcels(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(parcels)
 }
 
-func CreateParcel(w http.ResponseWriter, r *http.Request) {
+func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
 	var newParcel models.Parcel
 
 	err := json.NewDecoder(r.Body).Decode(&newParcel)
@@ -69,9 +86,8 @@ func CreateParcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newParcel.ID = fmt.Sprintf("HTC-%d", 90000+10000) // Simple mock ID generation
+	newParcel.ID = fmt.Sprintf("HTC-%d", 90000+10000)
 
-	// Set the initial status automatically!
 	currentTime := time.Now().Format("Jan 02, 2006 03:04 PM")
 	newParcel.CurrentStatus = "Label Created"
 	newParcel.StatusHistory = []models.StatusUpdate{
@@ -89,16 +105,13 @@ func CreateParcel(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newParcel)
 }
 
-// NEW: Update a parcel's status
-func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
-	// 1. Get the tracking ID from the URL (e.g., /api/v1/parcels/HTC-89012/status)
+func (h *ParcelHandler) UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
 	trackingID := r.URL.Query().Get("tracking_id")
 	if trackingID == "" {
 		http.Error(w, `{"error": "tracking_id query parameter is required"}`, http.StatusBadRequest)
 		return
 	}
 
-	// 2. Find the parcel in our slice
 	var foundParcel *models.Parcel
 	var foundIndex int
 	for i, p := range parcels {
@@ -114,7 +127,6 @@ func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Decode the incoming status update
 	var statusUpdate models.StatusUpdate
 	err := json.NewDecoder(r.Body).Decode(&statusUpdate)
 	if err != nil {
@@ -127,17 +139,39 @@ func UpdateParcelStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Apply the update
 	currentTime := time.Now().Format("Jan 02, 2006 03:04 PM")
 	statusUpdate.Time = currentTime
 
 	foundParcel.StatusHistory = append(foundParcel.StatusHistory, statusUpdate)
 	foundParcel.CurrentStatus = statusUpdate.Status
 
-	// Save back to the slice
 	parcels[foundIndex] = *foundParcel
 
-	// 5. Return the updated parcel
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(foundParcel)
+}
+
+func (h *ParcelHandler) GetParcelByID(w http.ResponseWriter, r *http.Request) {
+	trackingID := chi.URLParam(r, "trackingID")
+	if trackingID == "" {
+		http.Error(w, `{"error": "Tracking ID is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var foundParcel *models.Parcel
+	for i, p := range parcels {
+		if p.ID == trackingID {
+			foundParcel = &parcels[i]
+			break
+		}
+	}
+
+	if foundParcel == nil {
+		http.Error(w, `{"error": "Parcel not found"}`, http.StatusNotFound)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(foundParcel)

@@ -1,13 +1,17 @@
 // frontend/src/app/status/page.tsx
 
-// frontend/src/app/status/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe, Server, Database, RefreshCw, CheckCircle, XCircle, Loader } from "lucide-react";
+import { Globe, Server, Database, RefreshCw, CheckCircle, XCircle, Loader, ChevronDown, ChevronRight } from "lucide-react";
 
 type ServiceStatus = "checking" | "online" | "offline";
+
+interface SubCheck {
+  name: string;
+  status: ServiceStatus;
+  latency: number;
+}
 
 interface Service {
   name: string;
@@ -16,6 +20,8 @@ interface Service {
   status: ServiceStatus;
   latency: number | null;
   description: string;
+  subChecks: SubCheck[];
+  isExpanded: boolean;
 }
 
 export default function StatusPage() {
@@ -27,61 +33,75 @@ export default function StatusPage() {
       status: "checking",
       latency: null,
       description: "The web interface serving this page.",
+      subChecks: [],
+      isExpanded: false,
     },
     {
-      name: "Backend API (Go)",
+      name: "Backend API & Database (Go + Postgres)",
       icon: Server,
-      url: `${process.env.NEXT_PUBLIC_API_URL}/api/v1/health`, // FIXED: Uses Environment Variable
+      url: `${process.env.NEXT_PUBLIC_API_URL}/api/v1/health`,
       status: "checking",
       latency: null,
-      description: "The core API handling parcel data and logic.",
-    },
-    {
-      name: "Database (SQLite)",
-      icon: Database,
-      url: null, 
-      status: "offline",
-      latency: null,
-      description: "Persistent storage for parcels and users.",
+      description: "The core API and database handling parcel data, storage, and logic.",
+      subChecks: [],
+      isExpanded: true, 
     },
   ]);
 
   const checkServices = async () => {
     // Set all to checking first
-    setServices(prev => prev.map(s => ({ ...s, status: "checking" as ServiceStatus })));
+    setServices(prev => prev.map(s => ({ ...s, status: "checking" as ServiceStatus, subChecks: [] })));
 
-    // Fetch all services simultaneously for faster checks
-    const results = await Promise.all(
-      services.map(async (service): Promise<Service> => {
-        if (!service.url) {
-          return { ...service, status: "offline" };
+    for (let i = 0; i < services.length; i++) {
+      const service = services[i];
+      
+      // FIX: If it's the frontend, we know it's online because this code is running!
+      if (service.name.includes("Frontend")) {
+        setServices(prev => prev.map((s, idx) => idx === i ? { ...s, status: "online", latency: 0 } : s));
+        continue;
+      }
+
+      if (!service.url) {
+        setServices(prev => prev.map((s, idx) => idx === i ? { ...s, status: "offline" } : s));
+        continue;
+      }
+
+      try {
+        const startTime = performance.now();
+        const res = await fetch(service.url, { cache: "no-store" });
+        const endTime = performance.now();
+        const latency = Math.round(endTime - startTime);
+
+        if (res.ok) {
+          const data = await res.json();
+          
+          const subChecks: SubCheck[] = (data.subChecks || []).map((sc: any) => ({
+            name: sc.name,
+            status: sc.status === "online" ? "online" : "offline",
+            latency: Math.round(sc.latency),
+          }));
+
+          setServices(prev => prev.map((s, idx) => idx === i ? { 
+            ...s, 
+            status: "online", 
+            latency, 
+            subChecks 
+          } : s));
+
+        } else {
+          setServices(prev => prev.map((s, idx) => idx === i ? { ...s, status: "offline", latency: null } : s));
         }
-
-        try {
-          const startTime = performance.now();
-          const res = await fetch(service.url, { cache: "no-store" });
-          const endTime = performance.now();
-          const latency = Math.round(endTime - startTime);
-
-          if (res.ok) {
-            return { ...service, status: "online", latency };
-          } else {
-            return { ...service, status: "offline", latency: null };
-          }
-        } catch (error) {
-          return { ...service, status: "offline", latency: null };
-        }
-      })
-    );
-
-    setServices(results);
+      } catch (error) {
+        setServices(prev => prev.map((s, idx) => idx === i ? { ...s, status: "offline", latency: null } : s));
+      }
+    }
   };
 
   useEffect(() => {
     checkServices();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const anyOffline = services.some(s => s.status === "offline" && s.url !== null);
+  const anyOffline = services.some(s => s.status === "offline" || s.subChecks.some(sc => sc.status === "offline"));
 
   const getStatusIcon = (status: ServiceStatus) => {
     switch (status) {
@@ -105,6 +125,10 @@ export default function StatusPage() {
       case "offline": return "text-red-400";
       case "checking": return "text-yellow-400";
     }
+  };
+
+  const toggleExpand = (index: number) => {
+    setServices(prev => prev.map((s, idx) => idx === index ? { ...s, isExpanded: !s.isExpanded } : s));
   };
 
   return (
@@ -132,33 +156,66 @@ export default function StatusPage() {
       {/* Services List */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         <div className="divide-y divide-gray-800">
-          {services.map((service) => {
+          {services.map((service, index) => {
             const Icon = service.icon;
+            const hasSubChecks = service.subChecks.length > 0;
+            
             return (
-              <div key={service.name} className="flex items-center justify-between p-6 hover:bg-gray-800/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-gray-950 rounded-lg border border-gray-800">
-                    <Icon className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold flex items-center gap-2">
-                      {service.name} 
-                      {getStatusIcon(service.status)}
-                    </h3>
-                    <p className="text-gray-500 text-sm">{service.description}</p>
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getStatusTextColor(service.status)}`}>
-                    {getStatusText(service.status)}
-                  </div>
-                  {service.latency !== null && (
-                    <div className="text-xs text-gray-600 mt-1">
-                      {service.latency}ms
+              <div key={service.name}>
+                <div className="flex items-center justify-between p-6 hover:bg-gray-800/50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-gray-950 rounded-lg border border-gray-800">
+                      <Icon className="h-5 w-5 text-gray-400" />
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-white font-semibold flex items-center gap-2">
+                        {service.name} 
+                        {getStatusIcon(service.status)}
+                        
+                        {/* Expand/Collapse Button */}
+                        {hasSubChecks && (
+                          <button onClick={() => toggleExpand(index)} className="ml-2 text-gray-500 hover:text-gray-300 transition-colors">
+                            {service.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </h3>
+                      <p className="text-gray-500 text-sm">{service.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${getStatusTextColor(service.status)}`}>
+                      {getStatusText(service.status)}
+                    </div>
+                    {service.latency !== null && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        {service.latency}ms
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Sub-categories (Database checks) */}
+                {hasSubChecks && service.isExpanded && (
+                  <div className="bg-gray-950/40 border-t border-b border-gray-800">
+                    {service.subChecks.map((sub) => (
+                      <div key={sub.name} className="flex items-center justify-between px-6 py-3 ml-12 border-t border-gray-800/50 first:border-t-0">
+                        <div className="flex items-center gap-3">
+                          <Database className="h-4 w-4 text-gray-600" />
+                          <span className="text-gray-400 text-sm">{sub.name}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className={`text-xs font-medium ${getStatusTextColor(sub.status)}`}>
+                            {getStatusText(sub.status)}
+                          </span>
+                          <span className="text-xs text-gray-600 w-14 text-right">
+                            {sub.latency}ms
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

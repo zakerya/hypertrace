@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"hypertrace/internal/database"
 	"hypertrace/internal/handlers"
 
 	"github.com/go-chi/chi/v5"
@@ -52,7 +53,15 @@ func main() {
 		allowedOrigin = "http://localhost:3000"
 	}
 
-	// 3. Initialize Router
+	// 3. Initialize Database Connection Pool
+	ctx := context.Background()
+	pool, err := database.NewPool(ctx)
+	if err != nil {
+		log.Fatalf("❌ Failed to connect to database: %v", err)
+	}
+	defer pool.Close()
+
+	// 4. Initialize Router
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -66,24 +75,25 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// 5. Initialize Handlers, passing the database pool
+	parcelHandlers := handlers.NewParcelHandler(pool)
+
 	// --- Routes ---
-	r.Get("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ok", "message": "HyperTrace Go backend is alive!"}`))
-	})
+	r.Get("/api/v1/health", handlers.HealthCheck(pool))
 
-	r.Get("/api/v1/parcels", handlers.GetAllParcels)
-	r.Post("/api/v1/parcels", handlers.CreateParcel)
-	r.Put("/api/v1/parcels/status", handlers.UpdateParcelStatus)
+	// Use the new handler struct methods
+	r.Get("/api/v1/parcels", parcelHandlers.GetAllParcels)
+	r.Post("/api/v1/parcels", parcelHandlers.CreateParcel)
+	r.Put("/api/v1/parcels/status", parcelHandlers.UpdateParcelStatus)
+	r.Get("/api/v1/parcels/{trackingID}", parcelHandlers.GetParcelByID)
 
-	// 4. Create an HTTP Server instance
+	// 6. Create an HTTP Server instance
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: r,
 	}
 
-	// 5. Start the server in a Goroutine so it doesn't block the shutdown listener
+	// 7. Start the server in a Goroutine
 	go func() {
 		fmt.Printf("🚀 Server starting on http://localhost:%s\n", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -91,17 +101,13 @@ func main() {
 		}
 	}()
 
-	// 6. GRACEFUL SHUTDOWN LOGIC
-	// Create a channel to listen for OS interrupt signals (Ctrl+C)
+	// 8. GRACEFUL SHUTDOWN LOGIC
 	quit := make(chan os.Signal, 1)
-	// syscall.SIGINT = Ctrl+C, syscall.SIGTERM = Kill command
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Block the main thread until a signal is received
 	sig := <-quit
 	log.Printf("🛑 Received signal %v, shutting down gracefully...", sig)
 
-	// Give the server 10 seconds to finish processing active requests
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

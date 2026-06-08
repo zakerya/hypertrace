@@ -2,18 +2,27 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Package, Bell, BarChart3, ArrowRight, ScanLine, MapPin } from "lucide-react";
 
 // --- Pixel Dust Component ---
 const PixelDust = () => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return <div className="absolute inset-0 overflow-hidden pointer-events-none z-0"></div>;
+
   const particles = Array.from({ length: 70 }).map((_, i) => {
     const size = Math.random() * 3 + 1; 
     const left = Math.random() * 100; 
     const top = Math.random() * 100;
-    const delay = Math.random() * 10; 
-    const duration = Math.random() * 15 + 10;
+    // THE FIX: Use negative delays so they are ALREADY moving when they mount
+    const delay = -(Math.random() * 20); 
+    const duration = Math.random() * 15 + 15; // 15s to 30s
     const opacity = Math.random() * 0.5 + 0.2; 
     
     const colors = [
